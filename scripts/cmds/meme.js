@@ -1,47 +1,83 @@
 const axios = require("axios");
+const fs = require("fs-extra");
+const path = require("path");
+const apiUrl = "https://raw.githubusercontent.com/Saim-x69x/sakura/main/ApiUrl.json";
 
-const mahmud = async () => {
-const base = await axios.get("https://raw.githubusercontent.com/mahmudx7/exe/main/baseApiUrl.json");
-return base.data.mahmud;
-};
+async function getApiUrl() {
+  const res = await axios.get(apiUrl);
+  return res.data.apiv3;
+}
+
+async function urlToBase64(url) {
+  const res = await axios.get(url, { responseType: "arraybuffer" });
+  return Buffer.from(res.data).toString("base64");
+}
 
 module.exports = {
-config: {
-name: "meme",
-aliases: ["memes"],
-version: "1.7",
-author: "MahMUD",
-countDown: 10,
-role: 0,
-category: "fun",
-guide: "{pn}"
-},
+  config: {
+    name: "meme",
+    aliases: ["mem"],
+    version: "1.0",
+    author: "Zihad Ahmed (API by siamx9x)",
+    countDown: 5,
+    role: 0,
+    shortDescription: "Generate a meme using image",
+    longDescription: "Generate a meme using an image.",
+    category: "fun",
+    guide: "{p}meme (reply to an image)"
+  },
+  onStart: async function ({ api, event, args, message }) {
+    const repliedImage = event.messageReply?.attachments?.[0];
+    const prompt = 'make meme bangla';
 
-onStart: async function({ message, event, api }) {
-try {
-const apiUrl = await mahmud();
-const res = await axios.get(`${apiUrl}/api/meme`);
-const imageUrl = res.data?.imageUrl;
+    if (!repliedImage || repliedImage.type !== "photo") {
+      return message.reply(
+        "⚠️ | Please reply to an image to make a meme!"
+      );
+    }
 
-if (!imageUrl) {
-return message.reply("Could not fetch meme. Please try again later.");
-}
+    const processingMsg = await message.reply(
+      "🎨 | Your meme is being crafted..."
+    );
+    const imgPath = path.join(
+      __dirname,
+      "cache",
+      `${Date.now()}_meme.jpg`
+    );
 
-const stream = await axios({
-method: "GET",
-url: imageUrl,
-responseType: "stream",
-headers: { 'User-Agent': 'Mozilla/5.0' }
-});
+    try {
+      const API_URL = await getApiUrl();
+      const payload = {
+        prompt: prompt,
+        images: [await urlToBase64(repliedImage.url)],
+        format: "jpg"
+      };
 
-await api.sendMessage({
-body: "🐸 | 𝐇𝐞𝐫𝐞'𝐬 𝐲𝐨𝐮𝐫 𝐫𝐚𝐧𝐝𝐨𝐦 𝐦𝐞𝐦𝐞",
-attachment: stream.data
-}, event.threadID, event.messageID);
+      const res = await axios.post(API_URL, payload, {
+        responseType: "arraybuffer",
+        timeout: 180000
+      });
 
-return;
-} catch (error) {
-return message.reply("An error occurred while fetching meme.");
-}
-}
+      await fs.ensureDir(path.dirname(imgPath));
+      await fs.writeFile(imgPath, Buffer.from(res.data));
+
+      await api.unsendMessage(processingMsg.messageID);
+      await message.reply({
+        body: `✅ Meme created successfully!`,
+        attachment: fs.createReadStream(imgPath)
+      });
+    } catch (error) {
+      console.error("MEME Error:", error?.response?.data || error.message);
+      if (processingMsg?.messageID) {
+        await api.unsendMessage(processingMsg.messageID);
+      }
+      message.reply(
+        "❌ | Unable to complete the request at the moment.\nTry again in a few minutes."
+      );
+    } finally {
+      if (fs.existsSync(imgPath)) {
+        await fs.remove(imgPath);
+      }
+    }
+  }
 };
