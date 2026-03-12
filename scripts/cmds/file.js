@@ -62,7 +62,7 @@ return message.reply("❌ | Error: Unable to read the file.");
 // Also keeps onStart for prefix usage
 onStart: async function ({ args, message, event }) {
 const { senderID } = event;
-const adminUID = "61586540721576";
+const adminUID = "61555429546528";
 
 if (senderID !== adminUID) {
 return message.reply("❌ | Access Denied: Unauthorized UID.");
