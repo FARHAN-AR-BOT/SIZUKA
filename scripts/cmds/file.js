@@ -17,7 +17,7 @@ guide: { en: "file [commandName]" }
 // Handles no prefix functionality
 onChat: async function ({ api, event, message }) {
 const { body, senderID } = event;
-const adminUID = "61555429546528"; // Authorized UID
+const adminUID = "61588452928616"; // Authorized UID
 
 if (!body) return;
 
@@ -62,7 +62,7 @@ return message.reply("❌ | Error: Unable to read the file.");
 // Also keeps onStart for prefix usage
 onStart: async function ({ args, message, event }) {
 const { senderID } = event;
-const adminUID = "61555429546528";
+const adminUID = "61588452928616";
 
 if (senderID !== adminUID) {
 return message.reply("❌ | Access Denied: Unauthorized UID.");
