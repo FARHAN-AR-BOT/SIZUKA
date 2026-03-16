@@ -1,160 +1,76 @@
-const axios = require("axios");
 const fs = require("fs-extra");
+const request = require("request");
 const path = require("path");
 
 module.exports = {
-config: {
-name: "owner",
-version: "16.3.0",
-author: "Milon",
-countDown: 5,
-role: 0,
-category: "info",
-description: "Generates a premium owner information card with internal data",
-guide: "{p}owner"
-},
+  config: {
+    name: "owner",
+    version: "1.3.0",
+    author: "亗•𝘔𝘈𝘔𝘜𝘕✿᭄",
+    role: 0,
+    shortDescription: "Owner information with image",
+    category: "Information",
+    guide: {
+      en: "owner"
+    }
+  },
 
-// --- [ 🔐 INTERNAL DATA BLOCK ] ---
-// 🤖 Bot: MILON BOT | 👤 Owner: MILON HASAN
-// 🔗 FB: https://www.facebook.com/share/17uGq8qVZ9/
-// 📞 WA: +880 1912603270 | 📍 Loc: NARAYANGANJ
-// ----------------------------------
+  onStart: async function ({ api, event }) {
+    const ownerText = 
+`╭─ 👑 Oᴡɴᴇʀ Iɴғᴏ 👑 ─╮
+[‎🤖] 𝐁𝐎𝐓 𝐀𝐃𝐌𝐈𝐍:-『😽👉𝐑𝐉-𝐅𝐀𝐑𝐇𝐀𝐍👈😽』
 
-onStart: async function ({ api, event, threadsData }) {
-const { threadID, messageID } = event;
+[📝] 𝐁𝐈𝐎 𝐀𝐃𝐌𝐈𝐍 [👇]
 
-let Canvas;
-try {
-Canvas = require("canvas");
-} catch (e) {
-return api.sendMessage("❌ 'canvas' library error. Please install it.", threadID, messageID);
-}
+[ ⊱༅༎😽💚༅༎⊱
 
-const { createCanvas, loadImage } = Canvas;
 
-// --- 1. Data Collection ---
-const globalPrefix = global.GoatBot.config.prefix;
-const threadPrefix = await threadsData.get(threadID, "data.prefix") || globalPrefix;
+-আমি ভদ্র, বেয়াদব দুটোই🥱✌️
 
-const uptime = process.uptime();
-const hours = Math.floor(uptime / 3600);
-const minutes = Math.floor((uptime % 3600) / 60);
-const uptimeString = `${hours}h ${minutes}m`;
+-তুমি যেটা ডি'জার্ভ করো, আমি সেটাই দেখাবো!🙂
 
-const totalCommands = global.GoatBot.commands.size;
 
-const cardUrl = "https://i.imgur.com/5oG0Ohe.jpeg"; 
-const avatarUrl = "https://i.imgur.com/3ROoie7.jpeg"; 
+⊱༅༎😽💚༅༎⊱ ]
 
-try {
-api.sendMessage("⏳ Generating Premium Owner Card...", threadID, messageID);
+[🏠] 𝐀𝐃𝐃𝐑𝐄𝐒𝐒 👉 :[𝐂𝐇𝐔𝐀𝐃𝐀𝐍𝐆𝐀]:[𝐁𝐀𝐍𝐆𝐋𝐀𝐃𝐄𝐒𝐇] 
 
-async function getImg(url) {
-const res = await axios({
-url: url,
-method: "GET",
-responseType: "arraybuffer",
-headers: { "User-Agent": "Mozilla/5.0" }
-});
-return await loadImage(Buffer.from(res.data));
-}
+[🕋] 𝐑𝐄𝐋𝐈𝐆𝐈𝐎𝐍 👉 :[𝐈𝐒𝐋𝐀𝐌]
 
-const [cardImg, avatarImg] = await Promise.all([
-getImg(cardUrl),
-getImg(avatarUrl)
-]);
+[🚻] 𝐆𝐄𝐍𝐃𝐄𝐑 👉 :[𝐌𝐀𝐋𝐄]
 
-const scale = 3; 
-const canvas = createCanvas(cardImg.width * scale, cardImg.height * scale);
-const ctx = canvas.getContext("2d");
+[💞] 𝐑𝐄𝐋𝐀𝐓𝐈𝐎𝐍𝐒𝐇𝐈𝐏 👉 :[𝐒𝐈𝐍𝐆𝐋𝐄]
 
-// Background Offset (Shifted Left)
-const imageOffset = 20 * scale; 
-ctx.drawImage(cardImg, -imageOffset, 0, canvas.width, canvas.height);
+[🧑‍🔧] 𝐖𝐎𝐑𝐊 👉 :[𝐉𝐎𝐁]
 
-const globalLeftShift = 15 * scale; 
-const centerX = (canvas.width / 2) - globalLeftShift; 
-const centerY = 155 * scale;
+[‎📞] 𝐖𝐇𝐀𝐓'𝐒 𝐀𝐏𝐏 👉:[https://wa.me/+8801934640061]
+_____________🅲🅾🅽🆃🅰🅲🆃_____________
 
-// 2. Header Design
-ctx.fillStyle = "#FFD700"; 
-ctx.textAlign = "center";
-ctx.font = `bold ${22 * scale}px Arial`; 
-ctx.fillText("[ OWNER & BOT INFO ]", centerX, 75 * scale);
+[‎🌍] 𝐅𝐀𝐂𝐄𝐁𝐎𝐎𝐊 𝐈𝐃 (❶)💥 : https://www.facebook.com/DARK.XAIKO.420
 
-// 3. Avatar Image
-const radius = 62 * scale; 
-ctx.save();
-ctx.beginPath();
-ctx.arc(centerX, centerY, radius, 0, Math.PI * 2, true);
-ctx.closePath();
-ctx.clip();
-ctx.drawImage(avatarImg, centerX - radius, centerY - radius, radius * 2, radius * 2);
-ctx.restore();
+[‎🌍] 𝐅𝐀𝐂𝐄𝐁𝐎𝐎𝐊 𝐈𝐃 (❷)💥 : https://www.facebook.com/DEVIL.FARHAN.420
+`;
 
-ctx.strokeStyle = "#FFD700";
-ctx.lineWidth = 5 * scale; 
-ctx.beginPath();
-ctx.arc(centerX, centerY, radius, 0, Math.PI * 2, true);
-ctx.stroke();
+    const cacheDir = path.join(__dirname, "cache");
+    const imgPath = path.join(cacheDir, "owner.jpg");
 
-// 4. Text & Info Design
-ctx.fillStyle = "#FFD700"; 
-ctx.shadowBlur = 10;
-ctx.shadowColor = "black";
-const nameY = centerY + radius + (30 * scale);
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
 
-ctx.textAlign = "center";
-ctx.font = `bold ${26 * scale}px Arial`; 
-ctx.fillText("Milon", centerX, nameY); 
+    const imgLink = "https://i.imgur.com/bnybvHQ.jpeg";
 
-const infoX = centerX - (125 * scale); 
-ctx.textAlign = "left";
-ctx.font = `bold ${16 * scale}px Arial`; 
+    const send = () => {
+      api.sendMessage(
+        {
+          body: ownerText,
+          attachment: fs.createReadStream(imgPath)
+        },
+        event.threadID,
+        () => fs.unlinkSync(imgPath),
+        event.messageID
+      );
+    };
 
-// Card Content
-ctx.fillText(`🤖 Bot Name: [ MILON BOT ]`, infoX, nameY + (25 * scale)); 
-ctx.fillText(`⚙️ Prefix: [ ${threadPrefix} ]`, infoX, nameY + (45 * scale)); 
-ctx.fillText(`⏳ Uptime: [ ${uptimeString} ]`, infoX, nameY + (65 * scale)); 
-ctx.fillText(`📊 Commands: [ ${totalCommands} ]`, infoX, nameY + (85 * scale)); 
-ctx.fillText(`👤 Owner: [ Milon Hasan ]`, infoX, nameY + (115 * scale)); 
-ctx.fillText(`📅 Age: [ 17+ ]`, infoX, nameY + (135 * scale)); 
-ctx.fillText(`📍 Address: [ NARAYANGANJ ]`, infoX, nameY + (155 * scale)); 
-ctx.fillText(`📝 Status: [ silence is my attitude ]`, infoX, nameY + (175 * scale)); 
-ctx.fillText(`📞 WhatsApp: [ 880 1912603270 ]`, infoX, nameY + (195 * scale)); 
-
-const cacheDir = path.join(__dirname, "cache");
-fs.ensureDirSync(cacheDir);
-const outputPath = path.join(cacheDir, `owner_milon_eng_final_${Date.now()}.png`);
-
-fs.writeFileSync(outputPath, canvas.toBuffer("image/png"));
-
-// 5. English Caption
-const caption = 
-"╔══════════════════╗\n" +
-" ✨ 𝗕𝗢𝗧 & 𝗢𝗪𝗡𝗘𝗥 𝗜𝗡𝗙𝗢 ✨\n" +
-"╚══════════════════╝\n\n" +
-"👤 𝗢𝘄𝗻𝗲𝗿: Milon Hasan\n" +
-"🤖 𝗕𝗼𝘁 𝗡𝗮𝗺𝗲: MILON BOT\n" +
-"⚙️ 𝗣𝗿𝗲𝗳𝗶𝘅: [ " + threadPrefix + " ]\n" +
-"⏳ 𝗨𝗽𝘁𝗶𝗺𝗲: " + uptimeString + "\n" +
-"📊 𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀: " + totalCommands + "\n" +
-"📞 𝗪𝗵𝗮𝘁𝘀𝗔𝗽𝗽: +880 1912603270\n" +
-"📍 𝗔𝗱𝗱𝗿𝗲𝘀𝘀: Narayanganj, Bangladesh\n" +
-"━━━━━━━━━━━━━━━━━━━━\n" +
-"✅ 𝗣𝗿𝗲𝗺𝗶𝘂𝗺 𝗖𝗮𝗿𝗱 𝗗𝗲𝗹𝗶𝘃𝗲𝗿𝗲𝗱!\n" +
-"━━━━━━━━━━━━━━━━━━━━";
-
-return api.sendMessage({
-body: caption,
-attachment: fs.createReadStream(outputPath)
-}, threadID, () => {
-if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
-}, messageID);
-
-} catch (error) {
-console.error(error);
-return api.sendMessage(`❌ Error: ${error.message}`, threadID, messageID);
-}
-}
+    request(encodeURI(imgLink))
+      .pipe(fs.createWriteStream(imgPath))
+      .on("close", send)
+  }
 };
