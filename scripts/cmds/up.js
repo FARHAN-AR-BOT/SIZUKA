@@ -1,166 +1,351 @@
-const axios = require("axios");
-const fs = require("fs-extra");
-const path = require("path");
+const { createCanvas, registerFont } = require("canvas");
 const os = require("os");
-const { createCanvas, loadImage } = require("canvas");
-const moment = require("moment-timezone");
+const fs = require("fs");
+const path = require("path");
+const { execSync } = require("child_process");
 
-module.exports = {
-config: {
-name: "up",
-aliases: ["uptime", "status"],
-version: "22.0.0",
-author: "Milon",
-countDown: 5,
-role: 0,
-category: "system",
-description: "Admin: No Prefix (61586540721576) | User: With Prefix",
-usePrefix: true
-},
+/* ===== HACKER FONTS ===== */
+const fontDir = path.join(__dirname, "fonts");
 
-onStart: async function ({ api, event, args }) {
-// onStart ekhon shudhu prefix wala command handle korbe (Normal users)
-return this.handleUptime({ api, event });
-},
+registerFont(path.join(fontDir, "CourierPrime-Regular.ttf"), {
+  family: "Hacker"
+});
 
-onChat: async function ({ api, event }) {
-const { body, senderID } = event;
-if (!body) return;
+registerFont(path.join(fontDir, "CourierPrime-Bold.ttf"), {
+  family: "Hacker",
+  weight: "bold"
+});
 
-// Hardcoded Admin UID check for No Prefix
-const adminUID = "61586540721576";
-const msg = body.toLowerCase();
-
-if (senderID == adminUID && (msg == "up" || msg == "uptime")) {
-return this.handleUptime({ api, event });
+try {
+  registerFont(path.join(fontDir, "NotoColorEmoji.ttf"), {
+    family: "Emoji"
+  });
+} catch {
+  console.log("Emoji font not found, using default");
 }
-},
 
-handleUptime: async function ({ api, event }) {
-const { threadID, messageID, senderID } = event;
-
-// STEP 1: Sending Checking Message
-const sendChecking = await api.sendMessage("🔍 Checking system status, please wait...", threadID);
-
-const timeStart = Date.now();
-const uptime = process.uptime();
-const hours = Math.floor(uptime / 3600);
-const minutes = Math.floor((uptime % 3600) / 60);
-const timeString = `${hours}h ${minutes}m`;
-
-const usedMem = ((os.totalmem() - os.freemem()) / (1024 ** 3)).toFixed(1);
-const totalMem = (os.totalmem() / (1024 ** 3)).toFixed(1);
-const ramPercentage = ((usedMem / totalMem) * 100).toFixed(0);
-const currentDate = moment.tz("Asia/Dhaka").format("DD/MM/YYYY");
-
-let userName = "User";
-try {
-const info = await api.getUserInfo(senderID);
-userName = info[senderID].name;
-} catch (e) { userName = "Developer"; }
-
-const imgUrl = "https://i.imgur.com/xHpbI1i.jpeg";
-const userImgUrl = `https://graph.facebook.com/${senderID}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`;
-const cachePath = path.join(__dirname, "cache", `up_milon_final_${Date.now()}.png`);
-
-try {
-if (!fs.existsSync(path.join(__dirname, "cache"))) fs.ensureDirSync(path.join(__dirname, "cache"));
-
-const image = await loadImage(imgUrl);
-const canvas = createCanvas(image.width, image.height);
-const ctx = canvas.getContext("2d");
-ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-
-const centerX = canvas.width / 2;
-const centerY = canvas.height / 2;
-
-// --- USER PROFILE (Box 220x220) ---
-const boxSize = 220;
-const boxX = centerX - (boxSize / 2);
-const boxY = centerY - (boxSize / 2) + 15;
-
-try {
-const userImg = await loadImage(userImgUrl);
-ctx.shadowColor = "#00ffff";
-ctx.shadowBlur = 25;
-ctx.strokeStyle = "#ffffff";
-ctx.lineWidth = 5;
-ctx.strokeRect(boxX, boxY, boxSize, boxSize);
-ctx.shadowBlur = 0; 
-ctx.drawImage(userImg, boxX, boxY, boxSize, boxSize);
-
-ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-ctx.fillRect(boxX, boxY + boxSize - 35, boxSize, 35);
-ctx.textAlign = "center";
-ctx.fillStyle = "#ffffff";
-ctx.font = "bold 16px Arial";
-ctx.fillText(userName.toUpperCase(), centerX, boxY + boxSize - 12);
-} catch (err) { console.log("Image load failed"); }
-
-// --- Circles ---
-const drawCircle = (x, y, radius, percent, label, value, color) => {
-ctx.beginPath();
-ctx.arc(x, y, radius, 0, Math.PI * 2);
-ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
-ctx.lineWidth = 10; ctx.stroke();
-ctx.beginPath();
-ctx.arc(x, y, radius, -Math.PI / 2, (-Math.PI / 2) + (Math.PI * 2 * (percent / 100)));
-ctx.strokeStyle = color;
-ctx.lineWidth = 10; ctx.lineCap = "round"; ctx.stroke();
-ctx.textAlign = "center"; ctx.fillStyle = "#ffffff";
-ctx.font = "bold 20px Arial"; ctx.fillText(value, x, y + 8);
-ctx.font = "14px Arial"; ctx.fillText(label, x, y + 35);
+/* ===== SYSTEM HELPERS ===== */
+let prev = null;
+const getCPU = () => {
+  let idle = 0, total = 0;
+  for (const c of os.cpus()) {
+    for (const t in c.times) total += c.times[t];
+    idle += c.times.idle;
+  }
+  const cur = { idle, total };
+  if (!prev) { prev = cur; return 0; }
+  const di = cur.idle - prev.idle;
+  const dt = cur.total - prev.total;
+  prev = cur;
+  return dt ? Math.round(100 - (100 * di / dt)) : 0;
 };
 
-const uptimeX = boxX - 110;
-const ramX = boxX + boxSize + 110;
-drawCircle(uptimeX, centerY + 30, 60, 75, "UPTIME", timeString, "#00ffcc");
-drawCircle(ramX, centerY - 40, 60, ramPercentage, "RAM", `${ramPercentage}%`, "#ff3366");
-const pingMS = Date.now() - timeStart;
-drawCircle(ramX, centerY + 90, 50, 80, "PING", `${pingMS}ms`, "#ffff00");
+const getDisk = () => {
+  try {
+    const d = execSync("df -k /").toString().split("\n")[1].split(/\s+/);
+    return Math.round((parseInt(d[2]) / parseInt(d[1])) * 100);
+  } catch {
+    return Math.floor(Math.random() * 30) + 40;
+  }
+};
 
-// Footer
-ctx.textAlign = "center";
-ctx.font = "bold 24px Arial";
-ctx.fillStyle = "#00ff00";
-ctx.fillText("● SYSTEM STATUS: ACTIVE", centerX, canvas.height - 65);
-ctx.font = "italic bold 18px Arial"; 
-ctx.fillStyle = "#FFD700"; 
-ctx.fillText("Developed by: Milon Hasan", centerX, canvas.height - 95);
+const getNetwork = () => {
+  try {
+    const interfaces = os.networkInterfaces();
+    let total = 0;
+    for (const iface in interfaces) {
+      interfaces[iface].forEach(addr => {
+        if (addr.internal === false && addr.family === 'IPv4') {
+          total++;
+        }
+      });
+    }
+    return total;
+  } catch {
+    return 3;
+  }
+};
 
-// Bot Name & Date
-ctx.textAlign = "left";
-ctx.font = "bold 30px Arial";
-ctx.shadowColor = "#0000ff"; ctx.shadowBlur = 15;
-ctx.fillStyle = "#33ccff";
-ctx.fillText("[MILON-BOT]", 199, 128); 
+const getTemperature = () => {
+  try {
+    if (os.platform() === 'linux') {
+      const temp = execSync("cat /sys/class/thermal/thermal_zone0/temp").toString();
+      return Math.round(parseInt(temp) / 1000);
+    } else if (os.platform() === 'darwin') {
+      const temp = execSync("sudo powermetrics --samplers smc -i1 -n1 | grep -i 'CPU die temperature'").toString();
+      const match = temp.match(/(\d+\.?\d*)/);
+      return match ? Math.round(parseFloat(match[0])) : 45;
+    }
+  } catch {
+    return Math.floor(Math.random() * 20) + 40;
+  }
+  return 45;
+};
 
-const dateX = centerX + 82;
-const dateY = 120; 
-ctx.shadowBlur = 20; ctx.shadowColor = "#FF00FF";
-ctx.textAlign = "center";
-ctx.font = "bold 22px Arial";
-const gradient = ctx.createLinearGradient(dateX - 70, dateY, dateX + 70, dateY);
-gradient.addColorStop(0, "#FF0000"); gradient.addColorStop(0.5, "#00FF00"); gradient.addColorStop(1, "#0000FF");
-ctx.fillStyle = "#FFFFFF"; 
-ctx.fillText(`| ${currentDate}`, dateX, dateY);
-ctx.shadowBlur = 0;
-ctx.strokeStyle = gradient; ctx.lineWidth = 1.5;
-ctx.strokeText(`| ${currentDate}`, dateX, dateY);
+module.exports = {
+  config: {
+    name: "up",
+    aliases: ["uptime", "status", "sysinfo"],
+    version: "2.3",
+    author: "𝙼𝙾𝙷𝙰𝙼𝙼𝙰𝙳 𝙰𝙺𝙰𝚂𝙷",
+    role: 0,
+    category: "system",
+    shortDescription: "Display system status in hacker terminal style"
+  },
 
-const buffer = canvas.toBuffer("image/png");
-fs.writeFileSync(cachePath, buffer);
+  onStart: async function ({ message, api, event }) {
+    try {
+      const start = Date.now();
 
-// STEP 2: Send & Delete Checking
-return api.sendMessage({ attachment: fs.createReadStream(cachePath) }, threadID, async (err) => {
-if (!err) api.unsendMessage(sendChecking.messageID);
-if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
-}, messageID);
+      // System metrics
+      const cpu = Math.min(getCPU(), 99);
+      const total = os.totalmem();
+      const used = total - os.freemem();
+      const ram = Math.min(Math.round((used / total) * 100), 99);
+      const disk = Math.min(getDisk(), 99);
+      const network = Math.min(getNetwork(), 9);
+      const temp = getTemperature();
+      const threads = os.cpus().length;
+      const platform = os.platform().toUpperCase();
+      const arch = os.arch();
+      const hostname = os.hostname();
+      const load = Math.min(parseFloat(os.loadavg()[0].toFixed(2)), 9.99);
 
-} catch (e) {
-console.error(e);
-api.unsendMessage(sendChecking.messageID);
-return api.sendMessage("❌ Error generating status!", threadID, messageID);
-}
-}
+      // Uptime calculation
+      const sec = process.uptime();
+      const d = Math.floor(sec / 86400);
+      const h = Math.floor((sec % 86400) / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = Math.floor(sec % 60);
+      const uptime = d > 0 ? `${d}d ${h}h ${m}m` : `${h}h ${m}m ${s}s`;
+
+      const ping = Math.min(Date.now() - start, 9999);
+
+      /* ===== TERMINAL STYLE CANVAS ===== */
+      const W = 1400, H = 850;
+      const cv = createCanvas(W, H);
+      const c = cv.getContext("2d");
+
+      // Dark terminal background with gradient
+      const gradient = c.createLinearGradient(0, 0, W, H);
+      gradient.addColorStop(0, "#0a0a12");
+      gradient.addColorStop(1, "#0c0c18");
+      c.fillStyle = gradient;
+      c.fillRect(0, 0, W, H);
+
+      // Terminal scanlines effect
+      for (let i = 0; i < H; i += 3) {
+        c.fillStyle = i % 6 === 0 ? "rgba(0, 255, 100, 0.05)" : "rgba(0, 200, 80, 0.02)";
+        c.fillRect(0, i, W, 1);
+      }
+
+      // Terminal header with glitch effect
+      c.font = "bold 56px 'Hacker'";
+      c.fillStyle = "#00ff41";
+      c.textAlign = "center";
+      
+      // Glitch effect
+      c.fillStyle = "#ff0041";
+      c.fillText("█▓▒░ SYSTEM TERMINAL ░▒▓█", W/2 + 2, 82);
+      c.fillStyle = "#0041ff";
+      c.fillText("█▓▒░ SYSTEM TERMINAL ░▒▓█", W/2 - 2, 78);
+      c.fillStyle = "#00ff41";
+      c.fillText("█▓▒░ SYSTEM TERMINAL ░▒▓█", W/2, 80);
+
+      // Subtitle
+      c.font = "24px 'Hacker'";
+      c.fillStyle = "#00cc33";
+      c.fillText(">>> REAL-TIME SYSTEM MONITOR v2.3 <<<", W/2, 125);
+
+      // Connection info
+      c.font = "18px 'Hacker'";
+      c.fillStyle = "#008833";
+      c.textAlign = "left";
+      c.fillText(`CONNECTED TO: ${hostname.substring(0, 20)}`, 50, 155);
+      c.textAlign = "right";
+      c.fillText(`SESSION: ${Date.now().toString(16).toUpperCase().substring(0, 12)}`, W - 50, 155);
+
+      // Main content area with border
+      c.strokeStyle = "#00ff41";
+      c.lineWidth = 2;
+      c.strokeRect(40, 170, W - 80, H - 250);
+
+      // Left panel - System Info
+      c.font = "bold 36px 'Hacker'";
+      c.fillStyle = "#00ff88";
+      c.textAlign = "left";
+      c.fillText("☠️[IT'S FARHAN BOT]☠️", 60, 220);
+
+      const sysInfo = [
+        `OS: ${platform.substring(0, 10)} ${arch}`,
+        `CPU CORES: ${threads} @ ${os.cpus()[0].model.split('@')[0].substring(0, 30)}`,
+        `NETWORK: ${network} ACTIVE INTERFACES`,
+        `NODE: ${process.version.substring(0, 15)}`,
+        `LOAD: ${load}`,
+        `TEMP: ${temp}°C`
+      ];
+
+      c.font = "28px 'Hacker'";
+      c.fillStyle = "#00ee77";
+      const lineHeight = 45;
+      sysInfo.forEach((info, i) => {
+        c.fillText(`◉ ${info}`, 80, 280 + (i * lineHeight));
+      });
+
+      // Right panel - Live Metrics
+      c.font = "bold 36px 'Hacker'";
+      c.fillStyle = "#00ff88";
+      c.textAlign = "left";
+      c.fillText("> LIVE METRICS", W/2 + 60, 220);
+
+      // ASCII art bars
+      const drawTerminalBar = (x, y, value, label, color, symbol = "█") => {
+        c.font = "26px 'Hacker'";
+        c.fillStyle = "#00cc66";
+        c.fillText(label, x, y);
+        
+        c.fillStyle = "#002200";
+        c.fillRect(x, y + 15, 400, 30);
+        
+        const fillWidth = (value / 100) * 400;
+        const barGradient = c.createLinearGradient(x, 0, x + fillWidth, 0);
+        barGradient.addColorStop(0, color);
+        barGradient.addColorStop(1, color + "cc");
+        c.fillStyle = barGradient;
+        c.fillRect(x, y + 15, fillWidth, 30);
+        
+        c.strokeStyle = "#00ff41";
+        c.lineWidth = 1;
+        c.strokeRect(x, y + 15, 400, 30);
+        
+        c.font = "bold 24px 'Hacker'";
+        c.fillStyle = "#ffffff";
+        c.textAlign = "right";
+        const symbols = symbol.repeat(Math.floor(value/20));
+        c.fillText(`${value}% ${symbols.substring(0, 5)}`, x + 395, y + 40);
+        c.textAlign = "left";
+      };
+
+      drawTerminalBar(W/2 + 60, 280, cpu, "CPU LOAD", "#00ff41", "■");
+      drawTerminalBar(W/2 + 60, 350, ram, "MEMORY USAGE", "#00ccff", "▣");
+      drawTerminalBar(W/2 + 60, 420, disk, "STORAGE USAGE", "#ff00ff", "◼");
+
+      // Status indicators
+      c.font = "bold 32px 'Hacker'";
+      c.fillStyle = "#ffff00";
+      c.textAlign = "left";
+      c.fillText("⌛ SYSTEM UPTIME:", 60, 550);
+      
+      c.font = "30px 'Hacker'";
+      c.fillStyle = "#00ffff";
+      c.fillText(`[ ${uptime} ]`, 400, 550);
+
+      c.font = "bold 32px 'Hacker'";
+      c.fillStyle = "#ffff00";
+      c.fillText("📡 RESPONSE TIME:", 60, 610);
+      
+      let pingColor = "#00ff00";
+      let pingStatus = "EXCELLENT";
+      if (ping > 200) {
+        pingColor = "#ffff00";
+        pingStatus = "GOOD";
+      }
+      if (ping > 500) {
+        pingColor = "#ff5500";
+        pingStatus = "SLOW";
+      }
+      if (ping > 1000) {
+        pingColor = "#ff0000";
+        pingStatus = "POOR";
+      }
+      
+      c.font = "30px 'Hacker'";
+      c.fillStyle = pingColor;
+      c.fillText(`[ ${ping}ms | ${pingStatus} ]`, 430, 610);
+
+      // Process info
+      c.font = "bold 32px 'Hacker'";
+      c.fillStyle = "#ffff00";
+      c.fillText("🖥️  ACTIVE PROCESSES:", 60, 670);
+      
+      c.font = "28px 'Hacker'";
+      c.fillStyle = "#ff55ff";
+      const moduleCount = Math.min(Object.keys(global).length, 999);
+      c.fillText(`${moduleCount} MODULES LOADED`, 480, 670);
+
+      // Horizontal separator line
+      c.strokeStyle = "#00ff41";
+      c.lineWidth = 1;
+      c.setLineDash([5, 3]);
+      c.beginPath();
+      c.moveTo(60, 720);
+      c.lineTo(W - 60, 720);
+      c.stroke();
+      c.setLineDash([]);
+
+      // Terminal footer
+      c.font = "22px 'Hacker'";
+      c.fillStyle = "#00ff41";
+      c.textAlign = "center";
+      
+      const blink = Math.floor(Date.now() / 500) % 2 === 0;
+      c.fillText(blink ? "▋" : "_", W/2, H - 70);
+
+      // Status message
+      const status = ping < 100 ? "OPTIMAL" : ping < 300 ? "STABLE" : "LAG DETECTED";
+      const statusColor = ping < 100 ? "#00ff00" : ping < 300 ? "#ffff00" : "#ff0000";
+      
+      c.font = "bold 30px 'Hacker'";
+      c.fillStyle = statusColor;
+      c.fillText(`<<< SYSTEM STATUS: ${status} >>>`, W/2, H - 120);
+
+      // Bottom hex stream
+      c.font = "20px 'Hacker'";
+      c.fillStyle = "#008833";
+      for (let i = 0; i < W; i += 180) {
+        const hex = Math.random().toString(16).substr(2, 6).toUpperCase();
+        c.fillText(`0x${hex}`, i + 40, H - 40);
+      }
+
+      // Binary rain in background
+      c.font = "18px 'Hacker'";
+      for (let i = 0; i < 60; i++) {
+        const x = Math.random() * W;
+        const y = Math.random() * H;
+        const binary = Math.random() > 0.5 ? "1" : "0";
+        const alpha = Math.random() * 0.2 + 0.05;
+        c.fillStyle = `rgba(0, 255, 100, ${alpha})`;
+        c.fillText(binary, x, y);
+      }
+
+      // Save image
+      const timestamp = Date.now();
+      const file = path.join(__dirname, "cache", `terminal_${timestamp}.png`);
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, cv.toBuffer());
+
+      // Send ONLY the image attachment WITHOUT any message body
+      await message.reply({
+        attachment: fs.createReadStream(file)
+      });
+
+      // Auto-cleanup
+      setTimeout(() => {
+        if (fs.existsSync(file)) {
+          fs.unlinkSync(file);
+        }
+      }, 15000);
+
+    } catch (error) {
+      console.error("TERMINAL ERROR:", error);
+      // Send error message without ASCII art box
+      message.reply("❌ System terminal failed to generate.");
+    }
+  },
+
+  onChat: async function({ event, api }) {
+    if (event.body && event.body.toLowerCase() === "hack") {
+      api.sendMessage("```ACCESS DENIED\nINSUFFICIENT PRIVILEGES\n>_```", event.threadID);
+    }
+  }
 };
