@@ -1,70 +1,73 @@
-const fs = require("fs-extra");
-const path = require("path");
 const axios = require("axios");
-const jimp = require("jimp");
+const fs = require("fs");
+const path = require("path");
+
+const baseApiUrl = async () => {
+  const base = await axios.get(
+    "https://raw.githubusercontent.com/mahmudx7/HINATA/main/baseApiUrl.json"
+  );
+  return base.data.mahmud;
+};
+
+/**
+* @author MahMUD
+* @author: do not delete it
+*/
 
 module.exports = {
   config: {
     name: "toilet",
-    version: "1.0.0",
+    version: "1.7",
+    author: "MahMUD",
     role: 0,
-    author: "Aphelion",
-    description: "Tag someone and put their pic on toilet meme",
-    category: "user",
-    countDown: 5,
-    guide: { en: "@tag someone" },
+    category: "fun",
+    cooldown: 10,
+    guide: "[mention/reply/UID]",
   },
 
-  onLoad: async function () {
-    const dir = path.join(__dirname, "cache");
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    const toiletPath = path.join(dir, "toilet.png");
-    if (!fs.existsSync(toiletPath)) {
-      await axios({
-        method: "GET",
-        url: "https://drive.google.com/uc?id=13ZqFryD-YY-JTs34lcy6b_w36UCCk0EI&export=download",
-        responseType: "arraybuffer",
-      }).then((res) => fs.writeFileSync(toiletPath, Buffer.from(res.data, "utf-8")));
-    }
-  },
-
-  onStart: async function ({ api, event }) {
-    const mentions = Object.keys(event.mentions);
-    if (!mentions.length) return api.sendMessage("❌ Please tag 1 person!", event.threadID, event.messageID);
-
-    const targetID = mentions[0];
-    const dir = path.join(__dirname, "cache");
-    const toiletPath = path.join(dir, "toilet.png");
-    const avatarPath = path.join(dir, `avatar_${targetID}.png`);
-    const outputPath = path.join(dir, `toilet_${targetID}.png`);
-
-    try {
-      // Get profile picture
-      const res = await axios.get(
-        `https://graph.facebook.com/${targetID}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`,
-        { responseType: "arraybuffer" }
-      );
-      fs.writeFileSync(avatarPath, Buffer.from(res.data, "utf-8"));
-
-      // Composite image
-      const toiletImg = await jimp.read(toiletPath);
-      const avatarImg = await jimp.read(avatarPath);
-      avatarImg.circle().resize(70, 70);
-      toiletImg.composite(avatarImg, 100, 200);
-      await toiletImg.writeAsync(outputPath);
-
-      api.sendMessage(
-        { body: "🚽 Toilet Meme Generated!", attachment: fs.createReadStream(outputPath) },
-        event.threadID,
-        () => {
-          fs.unlinkSync(avatarPath);
-          fs.unlinkSync(outputPath);
-        },
+  onStart: async function({ api, event, args }) {
+    const obfuscatedAuthor = String.fromCharCode(77, 97, 104, 77, 85, 68); 
+    if (module.exports.config.author !== obfuscatedAuthor) {
+      return api.sendMessage(
+        "You are not authorized to change the author name.\n", 
+        event.threadID, 
         event.messageID
       );
-    } catch (err) {
-      console.error(err);
-      api.sendMessage("❌ Failed to generate toilet meme.", event.threadID, event.messageID);
     }
-  },
+
+    const { senderID, mentions, threadID, messageID, messageReply } = event;
+    let id;
+    if (Object.keys(mentions).length > 0) {
+      id = Object.keys(mentions)[0];
+    } else if (messageReply) {
+      id = messageReply.senderID;
+    } else if (args[0]) {
+      id = args[0]; 
+    } else {
+      return api.sendMessage(
+        "❌ Mention, reply, or give UID to make toilet someone",
+        threadID,
+        messageID
+      );
+    }
+
+    try {
+      const apiUrl = await baseApiUrl();
+      const url = `${apiUrl}/api/toilet?user=${id}`;
+
+      const response = await axios.get(url, { responseType: "arraybuffer" });
+      const filePath = path.join(__dirname, `toilet_${id}.png`);
+      fs.writeFileSync(filePath, response.data);
+      
+      api.sendMessage(
+        { attachment: fs.createReadStream(filePath), body: "ওয়াক থু 🤮 এই নে গু খেয়ে মর তুই গু খাওয়ার যোগ্য। 😜🤣" },
+        threadID,
+        () => fs.unlinkSync(filePath),
+        messageID
+      );
+
+    } catch (err) {
+      api.sendMessage(`🥹error, contact MahMUD.`, threadID, messageID);
+    }
+  }
 };
