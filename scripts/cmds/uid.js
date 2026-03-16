@@ -41,7 +41,7 @@ const realAvatar = `https://graph.facebook.com/${targetID}/picture?width=720&hei
 
 const text1 = encodeURIComponent(`USER: ${userName}`);
 const text2 = encodeURIComponent(`UID: ${targetID}`);
-const text3 = encodeURIComponent(`AUTHOR: MILON`);
+const text3 = encodeURIComponent(`AUTHOR: FARHAN`);
 
 // 🔥 Popcat Card API (ব্যাকগ্রাউন্ড এবং অবতার দুটেই এখন ইমেজ শো করবে)
 const cardApi = `https://api.popcat.xyz/welcomecard?background=${encodeURIComponent(realAvatar)}&text1=${text1}&text2=${text2}&text3=${text3}&avatar=${encodeURIComponent(realAvatar)}&color=800080`;
