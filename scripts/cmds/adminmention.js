@@ -98,12 +98,10 @@ module.exports = {
     // 🔹 Style Wrapper Function
     const formatCaption = (text) => {
       return `
-━━━━━━━━━━━━━━━━━━━━
+>━<━>━>━>━>+<━>━>━>━>━<
 - ${text}
-━━━━━━━━━━━━━━━━━━━━
-   [>ʙᴏᴛ ᴏᴡɴᴇʀ:-ꜰᴀʀʜᴀɴ-ᴋʜᴀɴ<]
-━━━━━━━━━━━━━━━━━━━━
-      `;
+>━<━>━>━>━>+<━>━>━>━>━<
+`;
     };
 
     const rawCaption = captions[Math.floor(Math.random() * captions.length)];
